@@ -1,12 +1,27 @@
-# HazineCaseStudy by agit oktay
+# HazineCaseStudy
 
 
-## Run
+## Prerequisites
 
-dotnet run test-data/large-text-file.txt 4
+* [netcoreapp3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) Runtime
+* or Docker
 
-## Test
-
-dotnet test
+## Running with dotnet
 
 
+```
+# dotnet run <txt file path> [thread count] 
+
+dotnet run test-data/file50mb.txt 6 
+ ```
+
+--- 
+## Running with docker
+
+### image build
+
+```docker build -t hazine-cs .```
+
+### run
+
+```docker run --rm hazine /test-data/file1.txt```
