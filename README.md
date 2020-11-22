@@ -10,7 +10,7 @@
 
 
 ```
-# dotnet run <txt file path> [thread count] 
+# dotnet run <txt file path> [thread count - default 5] 
 
 dotnet run test-data/file50mb.txt 6 
  ```
@@ -24,4 +24,4 @@ dotnet run test-data/file50mb.txt 6
 
 ### run
 
-```docker run --rm hazine /test-data/file1.txt```
+```docker run --rm hazine-cs /test-data/file1.txt```
