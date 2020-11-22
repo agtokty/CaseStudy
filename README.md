@@ -3,7 +3,7 @@
 
 ## Run
 
-dotnet run
+dotnet run test-data/large-text-file.txt 4
 
 ## Test
 
