@@ -6,9 +6,6 @@ using System.Linq;
 namespace HazineCaseStudy
 {
 
-    /// <summary>
-    /// 
-    /// </summary>
     public class FileReader
     {
 
@@ -88,6 +85,6 @@ namespace HazineCaseStudy
                 }
             }
         }
-    }
 
+    }
 }

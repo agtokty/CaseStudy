@@ -1,90 +1,73 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace HazineCaseStudy
 {
-    class ThreadState
-    {
-        public int Id { get; }
-        public int SentenceCount { get; set; }
-        public int WordCount { get; set; }
-        public ConcurrentQueue<String> Queue { get; }
-        public bool CanEnd { get; set; }
-
-        public ThreadState(int id)
-        {
-            Queue = new ConcurrentQueue<string>();
-            SentenceCount = 0;
-            CanEnd = false;
-        }
-    }
     class Program
     {
-        static ConcurrentDictionary<String, int> WORD_COUNTS = new ConcurrentDictionary<String, int>();
+        static String FilePath = "";
         static int ThreadCount = 5;
 
-        static List<Thread> threads = new List<Thread>();
+        static ConcurrentDictionary<String, int> WORD_COUNTS = new ConcurrentDictionary<String, int>();
+        static List<Task> threads = new List<Task>();
         static List<ThreadState> threadStates = new List<ThreadState>();
+
+        private static Task DoSomethingAsync(int x)
+        {
+            return Task.Run(() => WorkerThread(x));
+        }
 
         static void Main(string[] args)
         {
-            String filePath = "";
-
             if (args.Length > 0)
-            {
-                filePath = args[0];
-            }
+                FilePath = args[0];
 
             if (args.Length > 1)
                 int.TryParse(args[1], out ThreadCount);
 
-            FileReader fileReader = new FileReader(filePath);
+            FileReader fileReader = new FileReader(FilePath);
             int count = 0;
 
+            var watch = System.Diagnostics.Stopwatch.StartNew();
 
             for (int i = 0; i < ThreadCount; i++)
             {
                 threadStates.Add(new ThreadState(i));
-                Thread workerThread = new Thread(new ParameterizedThreadStart(WorkerThread));
-                workerThread.Start(i);
+                // Action<int> action = (count) => WorkerThread(count);
+                Task workerThread = DoSomethingAsync(i);
                 threads.Add(workerThread);
             }
 
-            var watch = System.Diagnostics.Stopwatch.StartNew();
-
-            int order = 0;
+            int runOrder = 0;
             foreach (string sentence in fileReader.ReadSentences())
             {
                 if (String.IsNullOrEmpty(sentence))
                     continue;
-
-                // if (count % 100 == 0)
-                //     Console.WriteLine("{0} - {1}", count, sentence);
-
                 count++;
-                threadStates[order].Queue.Enqueue(sentence);
-                order = (order + 1) % ThreadCount;
+                threadStates[runOrder].Queue.Enqueue(sentence);
+                runOrder = (runOrder + 1) % ThreadCount;
             }
 
-            foreach (ThreadState threadState in threadStates)
-            {
-                threadState.CanEnd = true;
-            }
+            System.Console.WriteLine("File reading elapsed time : {0} miliseconds", watch.ElapsedMilliseconds);
 
-            foreach (Thread thread in threads)
+            foreach (var thread in threadStates)
             {
-                thread.Join();
+                thread.CanEnd = true;
             }
+            Task.WaitAll(threads.ToArray());
+
             watch.Stop();
             System.Console.WriteLine("{0} Thread - Elapsed time : {1} miliseconds", ThreadCount, watch.ElapsedMilliseconds);
 
             int totalWord = threadStates.Sum(item => item.WordCount);
 
             System.Console.WriteLine("Sentence Count : {0}", count);
+            System.Console.WriteLine("Word Count : {0}", totalWord);
             System.Console.WriteLine("Avg. Word Count : {0}", totalWord / count);
 
             foreach (ThreadState threadState in threadStates)
@@ -92,44 +75,49 @@ namespace HazineCaseStudy
                 System.Console.WriteLine("ThreadId={0}, Count={1}", threadState.Id, threadState.SentenceCount);
             }
 
-            // Console.ReadLine();
+            var orderedResults = WORD_COUNTS.OrderByDescending(kv => kv.Value)
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            foreach (var item in orderedResults)
+            {
+                System.Console.WriteLine("{0} {1}", item.Key, item.Value);
+            }
         }
 
-        static void WorkerThread(Object idNum)
+        static void WorkerThread(Object indexNum)
         {
-            int id = (int)idNum;
+            int index = (int)indexNum;
             // Console.WriteLine("Thread-{0} strted", id);
 
-            // while (!threadStates[id].CanEnd && !threadStates[id].Queue.IsEmpty)
             while (true)
             {
-                // Console.WriteLine("Thread-{0} working", id);
-                // continue;
-                if (threadStates[id].CanEnd && threadStates[id].Queue.IsEmpty)
+                if (threadStates[index].CanEnd && threadStates[index].Queue.IsEmpty)
                     break;
 
                 String sentence = "";
-                if (!threadStates[id].Queue.IsEmpty && threadStates[id].Queue.TryDequeue(out sentence))
+                if (threadStates[index].Queue.TryDequeue(out sentence))
                 {
                     String[] words = sentence.Split(' ');
 
-                    threadStates[id].SentenceCount = threadStates[id].SentenceCount + 1;
-                    threadStates[id].WordCount = threadStates[id].WordCount + words.Length;
+                    threadStates[index].SentenceCount = threadStates[index].SentenceCount + 1;
                     foreach (var word in words)
                     {
                         if (String.IsNullOrEmpty(word))
                             continue;
-                        // threadStates[id].WordCount = threadStates[id].WordCount + 1;
-                        // WORD_COUNTS.AddOrUpdate(word, 1, (key, oldVal) => oldVal + 1);
+
+                        threadStates[index].WordCount = threadStates[index].WordCount + 1;
+                        WORD_COUNTS.AddOrUpdate(word, 1, (key, oldVal) => oldVal + 1);
                     }
                 }
-                else
-                {
-                    Thread.Sleep(1);
-                }
+                // else
+                // {
+                //     Thread.Sleep(1);
+                // }
             }
 
             // Console.WriteLine("Thread-{0} finished", id);
         }
+
     }
+
 }
